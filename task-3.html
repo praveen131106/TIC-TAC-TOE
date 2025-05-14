@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tic-Tac-Toe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to top left, #fdfbfb, #ebedee);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: #444;
+      margin-bottom: 20px;
+    }
+
+    .mode-select, .name-inputs {
+      margin-bottom: 20px;
+    }
+
+    input, select {
+      padding: 8px 16px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background-color: #fff;
+      margin: 0 5px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 10px;
+      background: #ffffff;
+      padding: 15px;
+      border-radius: 20px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+
+    .cell {
+      background-color: #fafafa;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      transition: background-color 0.2s;
+    }
+
+    .cell:hover {
+      background-color: #f0f0f0;
+    }
+
+    #status {
+      margin-top: 25px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #7F7FD5;
+      background-image: linear-gradient(to right, #7F7FD5, #86A8E7, #91EAE4);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    #popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      display: none;
+      text-align: center;
+      z-index: 10;
+    }
+
+    #popup p {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+    }
+
+    #popup button {
+      background-color: #6a11cb;
+      background-image: linear-gradient(315deg, #6a11cb 0%, #2575fc 74%);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Tic-Tac-Toe</h1>
+  <div class="mode-select">
+    <label for="mode">Choose Mode: </label>
+    <select id="mode" onchange="toggleNameInputs(); restart();">
+      <option value="computer">Play vs Computer</option>
+      <option value="multiplayer">2 Player Mode</option>
+    </select>
+  </div>
+  <div class="name-inputs">
+    <input type="text" id="playerX" placeholder="Enter Your Name">
+    <input type="text" id="playerO" placeholder="Enter Player O Name" style="display: none;">
+  </div>
+  <div class="board" id="board"></div>
+  <div id="status">Player X's Turn</div>
+  <div class="controls">
+    <button onclick="restart()">Restart</button>
+  </div>
+
+  <div id="popup">
+    <p id="popup-message"></p>
+    <button onclick="closePopup()">Play Again</button>
+  </div>
+
+  <script>
+    const board = document.getElementById("board");
+    const status = document.getElementById("status");
+    const modeSelect = document.getElementById("mode");
+    const playerXInput = document.getElementById("playerX");
+    const playerOInput = document.getElementById("playerO");
+    const popup = document.getElementById("popup");
+    const popupMessage = document.getElementById("popup-message");
+
+    let cells = Array(9).fill("");
+    let currentPlayer = "X";
+    let gameOver = false;
+
+    function toggleNameInputs() {
+      if (modeSelect.value === "multiplayer") {
+        playerOInput.style.display = "inline-block";
+        playerXInput.placeholder = "Enter Player X Name";
+      } else {
+        playerOInput.style.display = "none";
+        playerXInput.placeholder = "Enter Your Name";
+      }
+    }
+
+    function getPlayerName(symbol) {
+      if (symbol === "X") return playerXInput.value || "Player X";
+      if (modeSelect.value === "computer") return "Computer";
+      return playerOInput.value || "Player O";
+    }
+
+    function render() {
+      board.innerHTML = "";
+      cells.forEach((cell, i) => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        div.innerText = cell;
+        div.addEventListener("click", () => handleMove(i));
+        board.appendChild(div);
+      });
+    }
+
+    function handleMove(index) {
+      if (cells[index] !== "" || gameOver) return;
+      cells[index] = currentPlayer;
+      render();
+      if (checkWinner(currentPlayer)) return endGame(`${getPlayerName(currentPlayer)} Wins! 🎉`);
+      if (cells.every(cell => cell)) return endGame("It's a Draw! 🤝");
+
+      if (modeSelect.value === "computer" && currentPlayer === "X") {
+        currentPlayer = "O";
+        status.innerText = "Computer's Turn...";
+        setTimeout(computerMove, 500);
+      } else {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        status.innerText = `${getPlayerName(currentPlayer)}'s Turn`;
+      }
+    }
+
+    function computerMove() {
+      const emptyIndices = cells.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+      const move = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+      cells[move] = "O";
+      render();
+      if (checkWinner("O")) return endGame("Computer Wins! 😢");
+      if (cells.every(cell => cell)) return endGame("It's a Draw! 🤝");
+      currentPlayer = "X";
+      status.innerText = `${getPlayerName(currentPlayer)}'s Turn`;
+    }
+
+    function checkWinner(symbol) {
+      const wins = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+      return wins.some(pattern => pattern.every(i => cells[i] === symbol));
+    }
+
+    function endGame(message) {
+      gameOver = true;
+      popupMessage.innerText = message;
+      popup.style.display = "block";
+    }
+
+    function closePopup() {
+      popup.style.display = "none";
+      restart();
+    }
+
+    function restart() {
+      cells = Array(9).fill("");
+      currentPlayer = "X";
+      gameOver = false;
+      status.innerText = `${getPlayerName(currentPlayer)}'s Turn`;
+      render();
+    }
+
+    toggleNameInputs();
+    render();
+  </script>
+</body>
+</html>
